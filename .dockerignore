@@ -1,0 +1,22 @@
+# Dependencies (will be installed inside container)
+app/node_modules
+frontend/node_modules
+
+# Build outputs (will be built inside container)
+app/dist
+frontend/dist
+
+# Generated files
+app/generated
+
+# Runtime data
+data
+letsencrypt
+
+# Dev files
+.git
+*.md
+.env.local
+
+# Dev databases
+*.db

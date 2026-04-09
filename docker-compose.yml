@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  npm-lb:
+    build: .
+    container_name: npm-lb
+    restart: unless-stopped
+    ports:
+      - "80:80"       # HTTP
+      - "81:81"       # NPM Admin UI
+      - "443:443"     # HTTPS
+      - "3000:3001"   # Host 3000 -> Custom LB API (3001)
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    environment:
+      - DATABASE_URL=file:/data/custom-lb.sqlite
+      - PORT=3001
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
