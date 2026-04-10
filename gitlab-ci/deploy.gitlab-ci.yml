@@ -1,14 +1,17 @@
 production:
   stage: deploy
+  parallel:
+    matrix:
+      - TARGET_TAG: [proxy-colo, proxy-onprem]
   tags:
-    - production
+    - ${TARGET_TAG}
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - cp $ENV_FILE .env
     - docker compose pull
     - docker compose up -d --remove-orphans
   environment:
-    name: production
+    name: production/${TARGET_TAG}
 
   variables:
     CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE
