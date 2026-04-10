@@ -4,18 +4,13 @@ production:
     - production
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - cp $ENV_FILE .env
     - docker compose pull
     - docker compose up -d --remove-orphans
   environment:
     name: production
-    url: http://$POSTGRES_HOST  # Adjust if there's a specific app URL
 
   variables:
     CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE
-    POSTGRES_USER: $POSTGRES_USER
-    POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-    POSTGRES_DB: $POSTGRES_DB
-    POSTGRES_PORT: $POSTGRES_PORT
-    POSTGRES_HOST: $POSTGRES_HOST
   only:
     - main
