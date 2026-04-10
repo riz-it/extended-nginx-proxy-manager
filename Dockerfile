@@ -1,5 +1,5 @@
 # ============================================================
-# NPM Custom Load Balancer
+# NPM Load Balancer
 # Base: Nginx Proxy Manager + NestJS API + React UI
 # ============================================================
 
@@ -8,26 +8,24 @@ FROM jc21/nginx-proxy-manager:latest
 # ---- Build Backend ----
 WORKDIR /custom-app
 
-# Set environment to development to ensure devDependencies are installed
-ENV NODE_ENV=development
+# NODE_ENV will be set in docker-compose
 
-# Default DATABASE_URL for libsql/prisma (overridden by docker-compose env)
-ENV DATABASE_URL=file:/data/custom-lb.sqlite
+COPY src/app/package.json src/app/package-lock.json ./
+RUN npm install --include=dev
 
-COPY app/package.json app/package-lock.json ./
-RUN npm install
-
-COPY app/ ./
+COPY src/app/ ./
+COPY startScript.sh env.example ./
+RUN chmod +x startScript.sh
 RUN npx prisma generate
-RUN npx nest build
+RUN npm run build
 
 # ---- Build Frontend ----
 WORKDIR /custom-frontend
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm install
+COPY src/frontend/package.json src/frontend/package-lock.json ./
+RUN npm install --include=dev
 
-COPY frontend/ ./
+COPY src/frontend/ ./
 RUN npm run build
 
 # ---- Final Setup ----
@@ -49,8 +47,7 @@ RUN echo "longrun" > /etc/s6-overlay/s6-rc.d/custom-api/type
 RUN echo "#!/command/with-contenv bash" > /etc/s6-overlay/s6-rc.d/custom-api/run && \
     echo "cd /custom-app" >> /etc/s6-overlay/s6-rc.d/custom-api/run && \
     echo "for f in /run/s6/container_environment/*; do export \"\$(basename \"\$f\")\"=\"\$(cat \"\$f\")\"; done" >> /etc/s6-overlay/s6-rc.d/custom-api/run && \
-    echo "npx prisma migrate deploy" >> /etc/s6-overlay/s6-rc.d/custom-api/run && \
-    echo "exec node dist/main.js" >> /etc/s6-overlay/s6-rc.d/custom-api/run && \
+    echo "exec ./startScript.sh" >> /etc/s6-overlay/s6-rc.d/custom-api/run && \
     chmod +x /etc/s6-overlay/s6-rc.d/custom-api/run
 
 # Register service in the 'user' bundle

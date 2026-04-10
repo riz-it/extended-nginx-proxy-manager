@@ -1,13 +1,13 @@
 # Dependencies (will be installed inside container)
-app/node_modules
-frontend/node_modules
+src/app/node_modules
+src/frontend/node_modules
 
 # Build outputs (will be built inside container)
-app/dist
-frontend/dist
+src/app/dist
+src/frontend/dist
 
 # Generated files
-app/generated
+src/app/generated
 
 # Runtime data
 data

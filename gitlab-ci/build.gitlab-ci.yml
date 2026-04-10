@@ -1,0 +1,11 @@
+image-latest:
+  stage: build
+  tags:
+    - development
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - DOCKER_BUILDKIT=1 docker build -t $CI_REGISTRY_IMAGE .
+    - docker push $CI_REGISTRY_IMAGE
+  only:
+    - development
+    - main
