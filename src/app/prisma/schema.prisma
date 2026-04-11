@@ -16,6 +16,9 @@ model LoadBalancer {
   name      String     @unique
   listenPort Int       @default(80) @map("listen_port")
   status    String     @default("active") // active | inactive | error
+  algorithm String     @default("roundrobin") // roundrobin | least_conn | ip_hash | custom
+  enableFailover Boolean @default(true) @map("enable_failover")
+  enableLoadBalancing Boolean @default(true) @map("enable_load_balancing")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 

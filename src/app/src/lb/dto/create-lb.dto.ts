@@ -11,5 +11,8 @@ export class CreateLbDto {
   name!: string;
   listenPort?: number;
   status?: string;
+  algorithm?: string;
+  enableFailover?: boolean;
+  enableLoadBalancing?: boolean;
   upstreams!: CreateUpstreamDto[];
 }

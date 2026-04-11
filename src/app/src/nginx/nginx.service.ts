@@ -133,6 +133,9 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
   async generateAndApply(config: {
     name: string;
     listenPort: number;
+    algorithm: string;
+    enableFailover: boolean;
+    enableLoadBalancing: boolean;
     upstreams: Array<{
       host: string;
       weight: number;
@@ -214,6 +217,9 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
   getConfigPreview(config: {
     name: string;
     listenPort: number;
+    algorithm: string;
+    enableFailover: boolean;
+    enableLoadBalancing: boolean;
     upstreams: Array<{
       host: string;
       weight: number;

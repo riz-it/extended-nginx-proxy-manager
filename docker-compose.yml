@@ -16,18 +16,27 @@ services:
       - /home/pusim/proxy/config/letsencrypt:/etc/letsencrypt
     environment:
       - TZ=Asia/Jakarta
-      # Nginx Proxy Manager Postgres Config
-      - DB_POSTGRES_HOST=${POSTGRES_HOST}
-      - DB_POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - DB_POSTGRES_USER=${POSTGRES_USER}
-      - DB_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_POSTGRES_NAME=${POSTGRES_DB}
-      # Custom API Postgres Config (used by startScript.sh)
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      
+      # ========================================================
+      # DATABASE CONFIGURATION (Supports sqlite, mysql, postgresql)
+      # ========================================================
+      # Uncomment DB_TYPE and change to mysql or sqlite. (default: postgresql)
+      # - DB_TYPE=sqlite
+      
+      # Required for PostgreSQL or MySQL
+      - DB_HOST=${DB_HOST:-${POSTGRES_HOST}}
+      - DB_PORT=${DB_PORT:-${POSTGRES_PORT:-5432}}
+      - DB_USER=${DB_USER:-${POSTGRES_USER}}
+      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - DB_NAME=${DB_NAME:-${POSTGRES_DB}}
+      
+      # Legacy Nginx Proxy Manager environment variables
+      - DB_POSTGRES_HOST=${DB_HOST:-${POSTGRES_HOST}}
+      - DB_POSTGRES_PORT=${DB_PORT:-${POSTGRES_PORT:-5432}}
+      - DB_POSTGRES_USER=${DB_USER:-${POSTGRES_USER}}
+      - DB_POSTGRES_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      - DB_POSTGRES_NAME=${DB_NAME:-${POSTGRES_DB}}
+
       # App Specific Config
       - PORT=3001
       - NODE_ENV=production

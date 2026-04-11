@@ -1,10 +1,24 @@
 upstream <%= name %> {
-    <% upstreams.forEach(function(u) { %>
+    <% if (enableLoadBalancing) { %>
+      <% if (algorithm === 'least_conn') { %>least_conn;<% } else if (algorithm === 'ip_hash') { %>ip_hash;<% } %>
+    <% } %>
+    <% let primaryAssigned = false; %>
+    <% upstreams.forEach(function(u, index) { %>
+    <% 
+      let isBackup = u.isBackup;
+      if (!enableLoadBalancing) {
+          if (!primaryAssigned && !u.isBackup) {
+             primaryAssigned = true;
+          } else {
+             isBackup = true;
+          }
+      }
+    %>
     <% if (u.protocol === 'https') { %>
     # Internal Bridge for <%= u.host %>
-    server 127.0.0.1:<%= 10000 + u.id %> weight=<%= u.weight || 1 %> max_fails=<%= u.maxFails || 3 %> fail_timeout=<%= u.failTimeout || '10s' %><% if (u.isBackup) { %> backup<% } %>;
+    server 127.0.0.1:<%= 10000 + u.id %> weight=<%= u.weight || 1 %> max_fails=<%= u.maxFails || 3 %> fail_timeout=<%= u.failTimeout || '10s' %><% if (isBackup) { %> backup<% } %>;
     <% } else { %>
-    server <%= u.host %> weight=<%= u.weight || 1 %> max_fails=<%= u.maxFails || 3 %> fail_timeout=<%= u.failTimeout || '10s' %><% if (u.isBackup) { %> backup<% } %>;
+    server <%= u.host %> weight=<%= u.weight || 1 %> max_fails=<%= u.maxFails || 3 %> fail_timeout=<%= u.failTimeout || '10s' %><% if (isBackup) { %> backup<% } %>;
     <% } %>
     <% }); %>
 
@@ -19,10 +33,12 @@ server {
         # are proxied through our internal HTTP-to-HTTPS bridges below.
         proxy_pass http://<%= name %>;
 
+        <% if (enableFailover) { %>
         # ── Failover & Retry Logic ──────────────────────────────
         proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
         proxy_next_upstream_tries 3;
         proxy_next_upstream_timeout 5s;
+        <% } %>
 
         # ── Connection Timeouts ─────────────────────────────────
         proxy_connect_timeout 3s;

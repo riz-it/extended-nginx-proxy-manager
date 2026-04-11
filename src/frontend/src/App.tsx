@@ -63,12 +63,14 @@ function UpstreamRow({
   onChange,
   onRemove,
   canRemove,
+  showWeight,
 }: {
   index: number;
   data: UpstreamFormData;
   onChange: (index: number, data: UpstreamFormData) => void;
   onRemove: (index: number) => void;
   canRemove: boolean;
+  showWeight: boolean;
 }) {
   return (
     <div className="upstream-row">
@@ -91,7 +93,7 @@ function UpstreamRow({
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 0.5fr) 2fr 0.5fr 0.5fr 0.8fr', gap: '1rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: showWeight ? 'minmax(90px, 0.5fr) 2fr 0.5fr 0.5fr 0.8fr' : 'minmax(90px, 0.5fr) 2fr 0.5fr 0.8fr', gap: '1rem', alignItems: 'start' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Protocol</label>
           <select
@@ -114,19 +116,21 @@ function UpstreamRow({
             onChange={(e) => onChange(index, { ...data, host: e.target.value })}
           />
         </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Weight</label>
-          <input
-            className="form-input"
-            style={{ padding: '7px 8px' }}
-            type="number"
-            min={1}
-            value={data.weight}
-            onChange={(e) =>
-              onChange(index, { ...data, weight: parseInt(e.target.value) || 1 })
-            }
-          />
-        </div>
+        {showWeight && (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Weight</label>
+            <input
+              className="form-input"
+              style={{ padding: '7px 8px' }}
+              type="number"
+              min={1}
+              value={data.weight}
+              onChange={(e) =>
+                onChange(index, { ...data, weight: parseInt(e.target.value) || 1 })
+              }
+            />
+          </div>
+        )}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Fails</label>
           <input
@@ -197,6 +201,9 @@ function LbModal({
 }) {
   const [name, setName] = useState('');
   const [listenPort, setListenPort] = useState(80);
+  const [enableLoadBalancing, setEnableLoadBalancing] = useState(true);
+  const [algorithm, setAlgorithm] = useState('roundrobin');
+  const [enableFailover, setEnableFailover] = useState(true);
   const [upstreams, setUpstreams] = useState<UpstreamFormData[]>([
     defaultUpstream(),
   ]);
@@ -219,6 +226,9 @@ function LbModal({
     if (editLb) {
       setName(editLb.name);
       setListenPort(editLb.listenPort);
+      setAlgorithm(editLb.algorithm || 'roundrobin');
+      setEnableFailover(editLb.enableFailover !== undefined ? editLb.enableFailover : true);
+      setEnableLoadBalancing(editLb.enableLoadBalancing !== undefined ? editLb.enableLoadBalancing : true);
       setUpstreams(
         editLb.upstreams.map((u) => ({
           host: u.host,
@@ -233,6 +243,9 @@ function LbModal({
     } else {
       setName('');
       setListenPort(80);
+      setAlgorithm('roundrobin');
+      setEnableFailover(true);
+      setEnableLoadBalancing(true);
       setUpstreams([defaultUpstream()]);
     }
     setActiveTab('details');
@@ -260,6 +273,9 @@ function LbModal({
       onSave({
         name: name.trim(),
         listenPort,
+        algorithm,
+        enableFailover,
+        enableLoadBalancing,
         upstreams: validUpstreams,
       });
     } finally {
@@ -322,6 +338,44 @@ function LbModal({
                 />
                 <p className="form-hint">Port nginx will listen on for incoming traffic (usually 80 or 443)</p>
               </div>
+              <div className="form-group">
+                <label className="form-check" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={enableLoadBalancing}
+                    onChange={(e) => setEnableLoadBalancing(e.target.checked)}
+                  />
+                  <span>Enable Load Balancing</span>
+                </label>
+                <p className="form-hint" style={{ marginTop: '0.25rem' }}>If disabled, traffic only hits the first primary server. Others act as backup.</p>
+              </div>
+              {enableLoadBalancing && (
+                <div className="form-group">
+                  <label>Load Balancing Algorithm</label>
+                  <select
+                    className="form-input"
+                    value={algorithm}
+                    onChange={(e) => setAlgorithm(e.target.value)}
+                  >
+                    <option value="roundrobin">Round Robin</option>
+                    <option value="least_conn">Least Connections</option>
+                    <option value="ip_hash">IP Hash</option>
+                    <option value="custom">Custom (Weighted)</option>
+                  </select>
+                  <p className="form-hint">Strategy for distributing traffic among upstream servers.</p>
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-check" style={{ marginTop: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={enableFailover}
+                    onChange={(e) => setEnableFailover(e.target.checked)}
+                  />
+                  <span>Enable Failover</span>
+                </label>
+                <p className="form-hint" style={{ marginTop: '0.25rem' }}>Retry requests on next upstream server if the current one fails.</p>
+              </div>
             </div>
           )}
 
@@ -348,6 +402,7 @@ function LbModal({
                     onChange={handleUpstreamChange}
                     onRemove={handleUpstreamRemove}
                     canRemove={upstreams.length > 1}
+                    showWeight={enableLoadBalancing && algorithm === 'custom'}
                   />
                 ))}
               </div>
@@ -715,6 +770,9 @@ function App({ onLogout }: { onLogout?: () => void }) {
         name: `${lb.name}-copy-${shortHash}`,
         listenPort: lb.listenPort,
         status: 'inactive',
+        algorithm: lb.algorithm || 'roundrobin',
+        enableFailover: lb.enableFailover !== undefined ? lb.enableFailover : true,
+        enableLoadBalancing: lb.enableLoadBalancing !== undefined ? lb.enableLoadBalancing : true,
         upstreams: lb.upstreams.map((u) => ({
           host: u.host,
           weight: u.weight,

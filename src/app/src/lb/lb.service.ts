@@ -68,6 +68,9 @@ export class LbService {
         name: safeName,
         listenPort: dto.listenPort || 80,
         status: dto.status || 'active',
+        algorithm: dto.algorithm || 'roundrobin',
+        enableFailover: dto.enableFailover ?? true,
+        enableLoadBalancing: dto.enableLoadBalancing ?? true,
         upstreams: {
           create: dto.upstreams.map((u) => ({
             host: u.host,
@@ -115,6 +118,15 @@ export class LbService {
     }
     if (dto.status !== undefined) {
       updateData['status'] = dto.status;
+    }
+    if (dto.algorithm !== undefined) {
+      updateData['algorithm'] = dto.algorithm;
+    }
+    if (dto.enableFailover !== undefined) {
+      updateData['enableFailover'] = dto.enableFailover;
+    }
+    if (dto.enableLoadBalancing !== undefined) {
+      updateData['enableLoadBalancing'] = dto.enableLoadBalancing;
     }
 
     // If upstreams provided, replace all
@@ -192,6 +204,9 @@ export class LbService {
     return this.nginx.getConfigPreview({
       name: lb.name,
       listenPort: lb.listenPort,
+      algorithm: lb.algorithm,
+      enableFailover: lb.enableFailover,
+      enableLoadBalancing: lb.enableLoadBalancing,
       upstreams: activeUpstreams,
     });
   }
@@ -228,6 +243,9 @@ export class LbService {
   private async applyConfig(lb: {
     name: string;
     listenPort: number;
+    algorithm: string;
+    enableFailover: boolean;
+    enableLoadBalancing: boolean;
     upstreams: Array<{
       host: string;
       weight: number;
@@ -248,6 +266,9 @@ export class LbService {
     await this.nginx.generateAndApply({
       name: lb.name,
       listenPort: lb.listenPort,
+      algorithm: lb.algorithm,
+      enableFailover: lb.enableFailover,
+      enableLoadBalancing: lb.enableLoadBalancing,
       upstreams: activeUpstreams,
     });
   }

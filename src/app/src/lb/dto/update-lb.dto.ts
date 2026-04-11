@@ -13,5 +13,8 @@ export class UpdateLbDto {
   name?: string;
   listenPort?: number;
   status?: string;
+  algorithm?: string;
+  enableFailover?: boolean;
+  enableLoadBalancing?: boolean;
   upstreams?: UpdateUpstreamDto[];
 }
