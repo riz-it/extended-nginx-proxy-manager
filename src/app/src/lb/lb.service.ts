@@ -67,6 +67,7 @@ export class LbService {
       data: {
         name: safeName,
         listenPort: dto.listenPort || 80,
+        status: dto.status || 'active',
         upstreams: {
           create: dto.upstreams.map((u) => ({
             host: u.host,
@@ -81,16 +82,16 @@ export class LbService {
       include: { upstreams: true },
     });
 
-    // Generate and apply nginx config
-    try {
-      await this.applyConfig(lb);
-    } catch (error) {
-      // Rollback if nginx config fails
-      this.logger.error('Failed to apply nginx config, rolling back...', error);
-      await this.prisma.loadBalancer.delete({ where: { id: lb.id } });
-      throw new BadRequestException(
-        `Nginx config validation failed: ${error}`,
-      );
+    // Generate and apply nginx config ONLY if active
+    if (lb.status === 'active') {
+      try {
+        await this.applyConfig(lb);
+      } catch (error) {
+        // Rollback if nginx config fails
+        this.logger.error('Failed to apply nginx config, rolling back...', error);
+        await this.prisma.loadBalancer.delete({ where: { id: lb.id } });
+        throw new BadRequestException(`Nginx config validation failed: ${error}`);
+      }
     }
 
     return lb;
@@ -224,22 +225,20 @@ export class LbService {
   /**
    * Apply nginx config for a load balancer
    */
-  private async applyConfig(
-    lb: {
-      name: string;
-      listenPort: number;
-      upstreams: Array<{
-        host: string;
-        weight: number;
-        maxFails: number;
-        failTimeout: string;
-        isBackup: boolean;
-        isActive: boolean;
-        id: number;
-        protocol: string;
-      }>;
-    },
-  ) {
+  private async applyConfig(lb: {
+    name: string;
+    listenPort: number;
+    upstreams: Array<{
+      host: string;
+      weight: number;
+      maxFails: number;
+      failTimeout: string;
+      isBackup: boolean;
+      isActive: boolean;
+      id: number;
+      protocol: string;
+    }>;
+  }) {
     const activeUpstreams = lb.upstreams.filter((u) => u.isActive);
     if (activeUpstreams.length === 0) {
       this.logger.warn(`No active upstreams for ${lb.name}`);

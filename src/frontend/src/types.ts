@@ -26,6 +26,7 @@ export interface LoadBalancer {
 export interface CreateLbPayload {
   name: string;
   listenPort: number;
+  status?: string;
   upstreams: Omit<Upstream, 'id' | 'createdAt' | 'updatedAt'>[];
 }
 

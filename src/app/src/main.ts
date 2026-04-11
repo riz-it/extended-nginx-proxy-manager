@@ -25,15 +25,21 @@ async function bootstrap() {
     app.use(express.static(publicDir));
 
     // SPA fallback: serve index.html for all non-API GET requests
-    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-      if (req.method === 'GET' && !req.path.startsWith('/api')) {
-        const indexPath = join(publicDir, 'index.html');
-        if (fs.existsSync(indexPath)) {
-          return res.sendFile(indexPath);
+    app.use(
+      (
+        req: express.Request,
+        res: express.Response,
+        next: express.NextFunction,
+      ) => {
+        if (req.method === 'GET' && !req.path.startsWith('/api')) {
+          const indexPath = join(publicDir, 'index.html');
+          if (fs.existsSync(indexPath)) {
+            return res.sendFile(indexPath);
+          }
         }
-      }
-      next();
-    });
+        next();
+      },
+    );
   }
 
   const port = process.env.PORT ?? 3001;

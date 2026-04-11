@@ -1,11 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
 import { exec } from 'child_process';
 
 @Injectable()
-export class NginxService {
+export class NginxService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NginxService.name);
   private readonly templatePath = path.join(
     __dirname,
@@ -26,6 +31,51 @@ export class NginxService {
     process.env.NGINX_CUSTOM_DIR || '/data/nginx/custom',
     'http.conf',
   );
+
+  private pollInterval: NodeJS.Timeout | null = null;
+  private lastMtime: number = 0;
+
+  onModuleInit() {
+    this.logger.log('Starting GlusterFS changes watcher (polling)...');
+    // Poll every 5 seconds to detect cross-VM config changes
+    this.pollInterval = setInterval(() => this.checkForConfigChanges(), 5000);
+  }
+
+  onModuleDestroy() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+    }
+  }
+
+  private checkForConfigChanges() {
+    const cmd =
+      "find /data/nginx /etc/letsencrypt -type f -printf '%T@\\n' 2>/dev/null | sort -n | tail -1";
+    exec(cmd, (err, stdout) => {
+      if (!err && stdout) {
+        const currentMtime = parseFloat(stdout.trim());
+
+        if (!isNaN(currentMtime)) {
+          if (this.lastMtime === 0) {
+            // First run, just set the baseline
+            this.lastMtime = currentMtime;
+          } else if (currentMtime > this.lastMtime) {
+            this.logger.log(
+              `Detected config change on GlusterFS (mtime: ${currentMtime} > ${this.lastMtime}). Reloading Nginx...`,
+            );
+            this.lastMtime = currentMtime;
+
+            // Reload Nginx smoothly
+            this.execCmd('nginx -s reload').catch((e: unknown) => {
+              const errMsg = e instanceof Error ? e.message : String(e);
+              this.logger.warn(
+                'Failed to reload Nginx from watch event: ' + errMsg,
+              );
+            });
+          }
+        }
+      }
+    });
+  }
 
   private execCmd(cmd: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -74,9 +124,7 @@ export class NginxService {
     }
 
     fs.writeFileSync(this.httpConfPath, parts.join('\n'), 'utf-8');
-    this.logger.log(
-      `Merged ${files.length} LB config(s) into http.conf`,
-    );
+    this.logger.log(`Merged ${files.length} LB config(s) into http.conf`);
   }
 
   /**
@@ -185,8 +233,6 @@ export class NginxService {
     if (!fs.existsSync(this.lbDir)) {
       return [];
     }
-    return fs
-      .readdirSync(this.lbDir)
-      .filter((f) => f.endsWith('.conf'));
+    return fs.readdirSync(this.lbDir).filter((f) => f.endsWith('.conf'));
   }
 }

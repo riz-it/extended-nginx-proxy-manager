@@ -49,10 +49,7 @@ export class LbController {
    * PUT /api/lb/:id — update load balancer
    */
   @Put(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateLbDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateLbDto) {
     return this.lbService.update(id, dto);
   }
 

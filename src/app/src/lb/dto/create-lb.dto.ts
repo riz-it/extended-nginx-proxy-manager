@@ -10,5 +10,6 @@ export class CreateUpstreamDto {
 export class CreateLbDto {
   name!: string;
   listenPort?: number;
+  status?: string;
   upstreams!: CreateUpstreamDto[];
 }

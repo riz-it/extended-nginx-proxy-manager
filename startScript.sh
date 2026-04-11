@@ -48,9 +48,13 @@ if [ -d "/custom-app" ]; then
     echo "Running in container mode..."
     cd /custom-app
     
-    # Sync Schema
-    echo "Syncing database schema..."
-    npx prisma db push --accept-data-loss
+    # Sync Schema using Prisma Migrations (safe for shared databases)
+    echo "Running database migrations..."
+    
+    # Mark the baseline as applied (ignores if already applied) to prevent failure on shared NPM database
+    npx prisma migrate resolve --applied 0_baseline || true
+    
+    npx prisma migrate deploy
     
     # Start Application
     echo "Starting NestJS application..."

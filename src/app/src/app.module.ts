@@ -5,11 +5,7 @@ import { LbModule } from './lb/lb.module';
 import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    LbModule,
-    AuthModule,
-  ],
+  imports: [PrismaModule, LbModule, AuthModule],
   controllers: [AppController],
 })
 export class AppModule {}

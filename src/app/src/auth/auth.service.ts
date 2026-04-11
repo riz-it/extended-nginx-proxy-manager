@@ -19,7 +19,7 @@ export class AuthService {
       const possibePaths = [
         '/data/keys.json', // NPM container path
         path.join(process.cwd(), '..', 'data', 'keys.json'), // Local dev workspace
-        path.join(process.cwd(), 'data', 'keys.json') // Fallback
+        path.join(process.cwd(), 'data', 'keys.json'), // Fallback
       ];
 
       for (const p of possibePaths) {
@@ -30,25 +30,30 @@ export class AuthService {
           return;
         }
       }
-      this.logger.warn('NPM Public Key not found. Token validation will fall back to NPM API.');
+      this.logger.warn(
+        'NPM Public Key not found. Token validation will fall back to NPM API.',
+      );
     } catch (e) {
       this.logger.error('Failed to load NPM JWT Public Key', e);
     }
   }
 
-  async login(identity: string, secret: string): Promise<{ token: string, expires: string }> {
+  async login(
+    identity: string,
+    secret: string,
+  ): Promise<{ token: string; expires: string }> {
     try {
       const response = await fetch(`${this.npmApiUrl}/api/tokens`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity, secret })
+        body: JSON.stringify({ identity, secret }),
       });
 
       if (!response.ok) {
         throw new UnauthorizedException('Invalid credentials from NPM');
       }
 
-      const data = await response.json() as any;
+      const data = await response.json();
       return { token: data.token, expires: data.expires };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
@@ -64,7 +69,7 @@ export class AuthService {
     if (!this.publicKey) {
       this.loadPublicKey();
     }
-    
+
     if (this.publicKey) {
       try {
         return jwt.verify(token, this.publicKey, { algorithms: ['RS256'] });
@@ -76,11 +81,11 @@ export class AuthService {
     // 2. Network fallback if keys.json isn't mounted: fetch from NPM
     try {
       const response = await fetch(`${this.npmApiUrl}/api/tokens`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-         // Token valid
-         return { valid: true };
+        // Token valid
+        return { valid: true };
       }
       throw new Error('NPM returned unauthorized');
     } catch (e) {

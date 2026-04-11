@@ -12,8 +12,8 @@ services:
       - "443:443"     # HTTPS
       - "3000:3001"   # Host 3000 -> Custom LB API (3001)
     volumes:
-      - ./config/data:/data
-      - ./config/letsencrypt:/etc/letsencrypt
+      - /home/pusim/proxy/config/data:/data
+      - /home/pusim/proxy/config/letsencrypt:/etc/letsencrypt
     environment:
       - TZ=Asia/Jakarta
       # Nginx Proxy Manager Postgres Config

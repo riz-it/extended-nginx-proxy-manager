@@ -15,6 +15,7 @@ import {
   Shield,
   Layers,
   LogOut,
+  Copy,
   Database
 } from 'lucide-react';
 import './index.css';
@@ -388,33 +389,30 @@ function DeleteModal({
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal"
-        style={{ maxWidth: 460 }}
+        style={{ maxWidth: 400 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header" style={{ borderBottom: 'none' }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--accent-rose)' }}>
-            <AlertTriangle size={24} />
-            <h2>Confirm Deletion</h2>
+        <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(244, 63, 94, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', color: 'var(--accent-rose)' }}>
+            <Trash2 size={32} />
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
-        <div className="modal-body" style={{ textAlign: 'center', paddingBottom: '0.5rem' }}>
-          <p style={{ fontSize: '16px', marginBottom: '12px' }}>
-            Are you sure you want to remove <strong style={{color: '#fff'}}>{lb.name}</strong>?
-          </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            This will permanently delete the Nginx configuration and stop traffic distribution for this endpoint.
-          </p>
-        </div>
-        <div className="modal-footer" style={{ borderTop: 'none', background: 'transparent' }}>
-          <button className="btn btn-ghost" onClick={onClose}>
-            Keep it
-          </button>
-          <button className="btn btn-danger" onClick={onConfirm}>
-            <Trash2 size={16} /> Delete Forever
-          </button>
+          <h2 style={{ fontSize: '16px', marginBottom: '8px' }}>Delete Load Balancer?</h2>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 8px' }}>
+              Are you sure you want to remove <strong style={{ color: 'var(--text)', padding: '2px 6px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}>{lb.name}</strong>?
+            </p>
+            <p style={{ margin: 0, fontSize: '12px' }}>
+              This config will be permanently deleted and traffic to these upstreams will stop. This cannot be undone.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+            <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={onClose}>
+              Cancel
+            </button>
+            <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={onConfirm}>
+              Yes, Delete
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -475,12 +473,14 @@ function LbCard({
   onDelete,
   onToggle,
   onPreview,
+  onDuplicate,
 }: {
   lb: LoadBalancer;
   onEdit: (lb: LoadBalancer) => void;
   onDelete: (lb: LoadBalancer) => void;
   onToggle: (lb: LoadBalancer) => void;
   onPreview: (lb: LoadBalancer) => void;
+  onDuplicate: (lb: LoadBalancer) => void;
 }) {
   const activeUpstreams = lb.upstreams.filter((u) => u.isActive);
   const totalWeight = activeUpstreams
@@ -495,6 +495,13 @@ function LbCard({
           <h3>{lb.name}</h3>
         </div>
         <div className="lb-card-actions">
+          <button
+            className="btn btn-ghost btn-icon btn-sm"
+            onClick={() => onDuplicate(lb)}
+            title="Duplicate Configuration"
+          >
+            <Copy size={16} />
+          </button>
           <button
             className="btn btn-ghost btn-icon btn-sm"
             onClick={() => onPreview(lb)}
@@ -701,6 +708,31 @@ function App({ onLogout }: { onLogout?: () => void }) {
     }
   };
 
+  const handleDuplicate = async (lb: LoadBalancer) => {
+    try {
+      const shortHash = Math.random().toString(36).substring(2, 6);
+      const data: CreateLbPayload = {
+        name: `${lb.name}-copy-${shortHash}`,
+        listenPort: lb.listenPort,
+        status: 'inactive',
+        upstreams: lb.upstreams.map((u) => ({
+          host: u.host,
+          weight: u.weight,
+          maxFails: u.maxFails,
+          failTimeout: u.failTimeout,
+          isBackup: u.isBackup,
+          isActive: u.isActive,
+          protocol: u.protocol || 'http',
+        })),
+      };
+      await api.createLb(data);
+      addToast(`Duplicated "${lb.name}" successfully`, 'success');
+      fetchLbs();
+    } catch (err) {
+      addToast(`Duplication failed: ${err}`, 'error');
+    }
+  };
+
   // ── Render ──────────────────────────────────────────────
 
   return (
@@ -804,6 +836,7 @@ function App({ onLogout }: { onLogout?: () => void }) {
                   onDelete={setDeleteLb}
                   onToggle={handleToggle}
                   onPreview={handlePreview}
+                  onDuplicate={handleDuplicate}
                 />
               ))
             )}
