@@ -863,7 +863,7 @@ function App({ onLogout }: { onLogout?: () => void }) {
               </svg>
             </div>
             <div>
-              <h1>NPM Load Balancer</h1>
+              <h1>Load Balance Manager</h1>
               <p className="header-subtitle">Extended Module for Nginx Proxy Manager</p>
             </div>
           </div>

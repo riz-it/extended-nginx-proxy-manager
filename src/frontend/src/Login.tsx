@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { api } from './api';
+import logoUrl from './assets/lbm.png';
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
   const [identity, setIdentity] = useState('');
@@ -30,11 +31,11 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
     <div className="login-container">
       <div className="login-box">
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <div className="header-logo">LB</div>
+          <img src={logoUrl} alt="LBM Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
         </div>
         
-        <h2 style={{ fontSize: '20px', marginBottom: '4px', fontWeight: 600 }}>Nginx Proxy Manager</h2>
-        <p style={{ marginBottom: '2rem', fontSize: '13px', color: 'var(--text-muted)' }}>Load Balancer Management Module</p>
+        <h2 style={{ fontSize: '20px', marginBottom: '4px', fontWeight: 600 }}>Load Balance Manager</h2>
+        <p style={{ marginBottom: '2rem', fontSize: '13px', color: 'var(--text-muted)' }}>Extended load balancing solution for Nginx Proxy Manager</p>
 
         {error && (
           <div className="login-error">
