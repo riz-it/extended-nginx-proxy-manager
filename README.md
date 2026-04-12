@@ -31,12 +31,16 @@ Built with **NestJS** (backend) and **React/Vite** (frontend), running as an add
 ## Overview
 
 NPM Load Balancer extends Nginx Proxy Manager with a dedicated UI and API for managing upstream load balancing configurations. Instead of manually editing Nginx config files, you manage your upstream servers through a visual dashboard � the system handles config generation, validation, and reload automatically.
+### UI Overview
 
+| Dashboard | Details Configuration | Upstreams Configuration |
+|:---:|:---:|:---:|
+| ![Dashboard](./overview/dashboard.png) | ![Details](./overview/details-loacbalancer.png) | ![Upstreams](./overview/upstreams-loacbalancer.png) |
 ---
 
 ## Architecture
 
-![How it works](./lbm.png)
+![How it works](./overview/architecture.png)
 
 1. Users manage load balancers via the **dashboard UI** or directly through the **REST API**.
 2. The backend persists all configuration to **PostgreSQL** via **Prisma ORM**.
