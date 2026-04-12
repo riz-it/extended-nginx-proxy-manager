@@ -1,4 +1,4 @@
-# NPM Load Balancer
+# Load Balance Manager
 
 > A web-based Nginx Load Balancer management system built on top of [Nginx Proxy Manager](https://nginxproxymanager.com/).
 
