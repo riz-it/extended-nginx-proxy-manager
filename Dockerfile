@@ -15,7 +15,7 @@ RUN npm install --include=dev
 
 COPY src/app/ ./
 COPY startScript.sh env.example ./
-RUN chmod +x startScript.sh
+RUN sed -i 's/\r$//' startScript.sh && chmod +x startScript.sh
 RUN npx prisma generate
 RUN npm run build
 

@@ -21,7 +21,7 @@ ENCODED_PASS=$(echo -n "$DB_PASS" | python3 -c 'import sys, urllib.parse; print(
 # 2. Construct and EXPORT DATABASE_URL
 if [ "$DB_TYPE" = "sqlite" ]; then
     if [ -d "/custom-app" ]; then
-        DB_URL="file:/data/database.sqlite"
+        DB_URL="file:/data/custom-app.sqlite"
     else
         DB_URL="file:./dev.db"
     fi
@@ -60,8 +60,16 @@ echo ".env generated successfully."
 SCHEMA_PATH="$APP_DIR/prisma/schema.prisma"
 if [ -f "$SCHEMA_PATH" ]; then
     echo "Updating Prisma provider to $DB_TYPE..."
-    # Replace provider inside the schema.prisma
-    sed -i -E "s/provider[[:space:]]*=[[:space:]]*\".*\"/provider = \"$DB_TYPE\"/" "$SCHEMA_PATH"
+        # Replace provider only inside the datasource db block (avoid touching generator provider)
+        awk -v db="$DB_TYPE" '
+            BEGIN { in_db = 0 }
+            /^datasource[[:space:]]+db[[:space:]]*\{/ { in_db = 1 }
+            in_db && /^[[:space:]]*provider[[:space:]]*=/ {
+                sub(/provider[[:space:]]*=[[:space:]]*"[^"]+"/, "provider = \"" db "\"")
+                in_db = 0
+            }
+            { print }
+        ' "$SCHEMA_PATH" > "$SCHEMA_PATH.tmp" && mv "$SCHEMA_PATH.tmp" "$SCHEMA_PATH"
 fi
 
 # 5. Application Run Logic

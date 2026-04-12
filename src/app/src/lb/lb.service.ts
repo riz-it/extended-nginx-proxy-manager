@@ -78,6 +78,7 @@ export class LbService {
             maxFails: u.maxFails ?? 3,
             failTimeout: u.failTimeout ?? '10s',
             isBackup: u.isBackup ?? false,
+            isActive: u.isActive ?? true,
             protocol: u.protocol ?? 'http',
           })),
         },

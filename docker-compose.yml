@@ -20,8 +20,8 @@ services:
       # ========================================================
       # DATABASE CONFIGURATION (Supports sqlite, mysql, postgresql)
       # ========================================================
-      # Uncomment DB_TYPE and change to mysql or sqlite. (default: postgresql)
-      # - DB_TYPE=sqlite
+      # Active DB engine (sqlite, mysql, postgresql)
+      - DB_TYPE=${DB_TYPE:-sqlite}
       
       # Required for PostgreSQL or MySQL
       - DB_HOST=${DB_HOST:-${POSTGRES_HOST}}

@@ -93,7 +93,7 @@ function UpstreamRow({
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: showWeight ? 'minmax(90px, 0.5fr) 2fr 0.5fr 0.5fr 0.8fr' : 'minmax(90px, 0.5fr) 2fr 0.5fr 0.8fr', gap: '1rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: showWeight ? '90px 1fr 75px 65px 85px' : '90px 1fr 65px 85px', gap: '1rem', alignItems: 'start' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Protocol</label>
           <select
@@ -116,14 +116,15 @@ function UpstreamRow({
             onChange={(e) => onChange(index, { ...data, host: e.target.value })}
           />
         </div>
-        {showWeight && (
+          {showWeight && (
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Weight</label>
+            <label style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Weight (%)</label>
             <input
               className="form-input"
               style={{ padding: '7px 8px' }}
               type="number"
               min={1}
+              step={1}
               value={data.weight}
               onChange={(e) =>
                 onChange(index, { ...data, weight: parseInt(e.target.value) || 1 })
@@ -158,8 +159,8 @@ function UpstreamRow({
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '24px', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid #f1f1f1' }}>
-        <label className="form-check">
+      <div className="toggle-grid toggle-grid--stack">
+        <label className={`toggle-field toggle-field--detail ${data.isBackup ? 'is-on' : ''}`}>
           <input
             type="checkbox"
             checked={data.isBackup}
@@ -167,10 +168,16 @@ function UpstreamRow({
               onChange(index, { ...data, isBackup: e.target.checked })
             }
           />
-          <Shield size={12} color={data.isBackup ? 'var(--warning)' : '#ccc'} />
-          Secondary / Backup Server
+          <span className="toggle-control" aria-hidden="true" />
+          <span className="toggle-content">
+            <span className="toggle-title">
+              <Shield size={12} color={data.isBackup ? 'var(--warning)' : 'var(--text-muted)'} />
+              Secondary / Backup Server
+            </span>
+            <span className="toggle-subtitle">Used only when primary nodes fail.</span>
+          </span>
         </label>
-        <label className="form-check">
+        <label className={`toggle-field toggle-field--detail ${data.isActive ? 'is-on' : ''}`}>
           <input
             type="checkbox"
             checked={data.isActive}
@@ -178,8 +185,14 @@ function UpstreamRow({
               onChange(index, { ...data, isActive: e.target.checked })
             }
           />
-          <CheckCircle2 size={12} color={data.isActive ? 'var(--success)' : '#ccc'} />
-          Enabled for Distribution
+          <span className="toggle-control" aria-hidden="true" />
+          <span className="toggle-content">
+            <span className="toggle-title">
+              <CheckCircle2 size={12} color={data.isActive ? 'var(--success)' : 'var(--text-muted)'} />
+              Enabled for Distribution
+            </span>
+            <span className="toggle-subtitle">Include this node in live traffic routing.</span>
+          </span>
         </label>
       </div>
     </div>
@@ -209,6 +222,7 @@ function LbModal({
   ]);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'upstreams'>('details');
+  const isCustomWeighted = enableLoadBalancing && algorithm === 'custom';
 
   function defaultUpstream(): UpstreamFormData {
     return {
@@ -339,15 +353,21 @@ function LbModal({
                 <p className="form-hint">Port nginx will listen on for incoming traffic (usually 80 or 443)</p>
               </div>
               <div className="form-group">
-                <label className="form-check" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                <label className={`toggle-field toggle-field--detail ${enableLoadBalancing ? 'is-on' : ''}`}>
                   <input
                     type="checkbox"
                     checked={enableLoadBalancing}
                     onChange={(e) => setEnableLoadBalancing(e.target.checked)}
                   />
-                  <span>Enable Load Balancing</span>
+                  <span className="toggle-control" aria-hidden="true" />
+                  <span className="toggle-content">
+                    <span className="toggle-title">
+                      <Layers size={12} color={enableLoadBalancing ? 'var(--primary)' : 'var(--text-muted)'} />
+                      Enable Load Balancing
+                    </span>
+                    <span className="toggle-subtitle">Route traffic across multiple upstream servers.</span>
+                  </span>
                 </label>
-                <p className="form-hint" style={{ marginTop: '0.25rem' }}>If disabled, traffic only hits the first primary server. Others act as backup.</p>
               </div>
               {enableLoadBalancing && (
                 <div className="form-group">
@@ -362,19 +382,28 @@ function LbModal({
                     <option value="ip_hash">IP Hash</option>
                     <option value="custom">Custom (Weighted)</option>
                   </select>
-                  <p className="form-hint">Strategy for distributing traffic among upstream servers.</p>
+                  <p className="form-hint">
+                    Strategy for distributing traffic among upstream servers.
+                    {isCustomWeighted ? ' Values are treated as relative percentages.' : ''}
+                  </p>
                 </div>
               )}
               <div className="form-group">
-                <label className="form-check" style={{ marginTop: '0.5rem' }}>
+                <label className={`toggle-field toggle-field--detail ${enableFailover ? 'is-on' : ''}`}>
                   <input
                     type="checkbox"
                     checked={enableFailover}
                     onChange={(e) => setEnableFailover(e.target.checked)}
                   />
-                  <span>Enable Failover</span>
+                  <span className="toggle-control" aria-hidden="true" />
+                  <span className="toggle-content">
+                    <span className="toggle-title">
+                      <Activity size={12} color={enableFailover ? 'var(--primary)' : 'var(--text-muted)'} />
+                      Enable Failover
+                    </span>
+                    <span className="toggle-subtitle">Retry the next healthy upstream automatically.</span>
+                  </span>
                 </label>
-                <p className="form-hint" style={{ marginTop: '0.25rem' }}>Retry requests on next upstream server if the current one fails.</p>
               </div>
             </div>
           )}
@@ -393,6 +422,11 @@ function LbModal({
                     <Plus size={14} /> Add Server
                   </button>
                 </div>
+                {isCustomWeighted && (
+                  <div className="weight-note">
+                    Custom weighted mode uses relative percentages. The numbers do not need to be exact, but the split should reflect the traffic ratio you want.
+                  </div>
+                )}
 
                 {upstreams.map((u, i) => (
                   <UpstreamRow
@@ -402,7 +436,7 @@ function LbModal({
                     onChange={handleUpstreamChange}
                     onRemove={handleUpstreamRemove}
                     canRemove={upstreams.length > 1}
-                    showWeight={enableLoadBalancing && algorithm === 'custom'}
+                    showWeight={isCustomWeighted}
                   />
                 ))}
               </div>
@@ -800,7 +834,34 @@ function App({ onLogout }: { onLogout?: () => void }) {
       <header className="header">
         <div className="header-top">
           <div className="header-brand">
-            <div className="header-logo">LB</div>
+            <div 
+              style={{
+                width: 38,
+                height: 38,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="logoGrad" x1="0%" y1="0%" x2="50%" y2="100%">
+                    <stop offset="0%" stopColor="#55c2e5" />
+                    <stop offset="100%" stopColor="#253e80" />
+                  </linearGradient>
+                  <clipPath id="hexClip">
+                    <path d="M50 5 L89 27.5 V72.5 L50 95 L11 72.5 V27.5 Z" />
+                  </clipPath>
+                </defs>
+                <path d="M50 5 L89 27.5 V72.5 L50 95 L11 72.5 V27.5 Z" fill="url(#logoGrad)" stroke="url(#logoGrad)" strokeWidth="6" strokeLinejoin="round" />
+                <g clipPath="url(#hexClip)" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 50 H45 L95 24" />
+                  <path d="M45 50 L95 41" />
+                  <path d="M45 50 L95 59" />
+                  <path d="M45 50 L95 76" />
+                </g>
+              </svg>
+            </div>
             <div>
               <h1>NPM Load Balancer</h1>
               <p className="header-subtitle">Extended Module for Nginx Proxy Manager</p>

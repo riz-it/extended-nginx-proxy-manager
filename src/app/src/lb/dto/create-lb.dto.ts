@@ -4,6 +4,7 @@ export class CreateUpstreamDto {
   maxFails?: number;
   failTimeout?: string;
   isBackup?: boolean;
+  isActive?: boolean;
   protocol?: string;
 }
 
