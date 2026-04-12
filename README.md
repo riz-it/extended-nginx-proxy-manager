@@ -30,7 +30,7 @@ Built with **NestJS** (backend) and **React/Vite** (frontend), running as an add
 
 ## Overview
 
-NPM Load Balancer extends Nginx Proxy Manager with a dedicated UI and API for managing upstream load balancing configurations. Instead of manually editing Nginx config files, you manage your upstream servers through a visual dashboard � the system handles config generation, validation, and reload automatically.
+NPM Load Balancer extends Nginx Proxy Manager with a dedicated UI and API for managing upstream load balancing configurations. Instead of manually editing Nginx config files, you manage your upstream servers through a visual dashboard - the system handles config generation, validation, and reload automatically.
 ### UI Overview
 
 | Dashboard | Details Configuration | Upstreams Configuration |
@@ -70,7 +70,7 @@ NPM Load Balancer extends Nginx Proxy Manager with a dedicated UI and API for ma
 
 - **Docker** >= 20.10
 - **Docker Compose** >= 2.0
-- **PostgreSQL** >= 13 (external � not bundled in this stack)
+- **PostgreSQL** >= 13 (external - not bundled in this stack)
 - Available ports: `80`, `81`, `443`, `3000`
 
 ---
@@ -106,11 +106,11 @@ These variables can be set in `docker-compose.yml` or as GitLab CI/CD variables.
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `POSTGRES_HOST` | � | Yes | Hostname of your external PostgreSQL server |
+| `POSTGRES_HOST` | - | Yes | Hostname of your external PostgreSQL server |
 | `POSTGRES_PORT` | `5432` | | PostgreSQL port |
-| `POSTGRES_USER` | � | Yes | Database username |
-| `POSTGRES_PASSWORD` | � | Yes | Database password |
-| `POSTGRES_DB` | � | Yes | Database name |
+| `POSTGRES_USER` | - | Yes | Database username |
+| `POSTGRES_PASSWORD` | - | Yes | Database password |
+| `POSTGRES_DB` | - | Yes | Database name |
 | `TZ` | `Asia/Jakarta` | | Container timezone |
 | `NODE_ENV` | `production` | | App mode (`production` or `development`) |
 
@@ -122,9 +122,9 @@ These variables can be set in `docker-compose.yml` or as GitLab CI/CD variables.
 
 `startScript.sh` runs as the container entrypoint and handles three things automatically on every container start:
 
-1. **Generates `.env`** � Builds `DATABASE_URL` dynamically from the `POSTGRES_*` environment variables.
-2. **Runs database migration** � Executes `prisma db push` to keep the schema in sync.
-3. **Portable** � The same script works locally for quick setup without any manual configuration.
+1. **Generates `.env`** - Builds `DATABASE_URL` dynamically from the `POSTGRES_*` environment variables.
+2. **Runs database migration** - Executes `prisma db push` to keep the schema in sync.
+3. **Portable** - The same script works locally for quick setup without any manual configuration.
 
 ---
 
@@ -132,17 +132,17 @@ These variables can be set in `docker-compose.yml` or as GitLab CI/CD variables.
 
 ```
 npm-custom-lb/
-+-- config/                  # Runtime data mounted into the container
-�   +-- data/                # Mount point for /data (Nginx configs)
-�   +-- letsencrypt/         # SSL certificates
-+-- gitlab-ci/               # CI/CD pipeline scripts (build & deploy)
-+-- src/
-�   +-- app/                 # Backend � NestJS
-�   +-- frontend/            # Frontend � React + Vite
-+-- Dockerfile               # Multi-stage Docker build
-+-- docker-compose.yml       # Container orchestration
-+-- startScript.sh           # Entrypoint: env generation & DB migration
-+-- env.example              # Environment variable template
+|-- config/                  # Runtime data mounted into the container
+|   |-- data/                # Mount point for /data (Nginx configs)
+|   |-- letsencrypt/         # SSL certificates
+|-- gitlab-ci/               # CI/CD pipeline scripts (build & deploy)
+|-- src/
+|   |-- app/                 # Backend - NestJS
+|   |-- frontend/            # Frontend - React + Vite
+|-- Dockerfile               # Multi-stage Docker build
+|-- docker-compose.yml       # Container orchestration
+|-- startScript.sh           # Entrypoint: env generation & DB migration
+|-- env.example              # Environment variable template
 ```
 
 ---
@@ -151,13 +151,13 @@ npm-custom-lb/
 
 The pipeline runs in two stages:
 
-**Stage 1 � Build**
+**Stage 1 - Build**
 Builds the Docker image using the multi-stage `Dockerfile` and pushes it to the GitLab Container Registry.
 
-**Stage 2 � Deploy**
+**Stage 2 - Deploy**
 SSHes into the target server, runs `docker compose pull` to fetch the latest image, then restarts the stack with the updated environment variables.
 
-**Required GitLab CI/CD Variables** (`Settings ? CI/CD ? Variables`):
+**Required GitLab CI/CD Variables** (`Settings -> CI/CD -> Variables`):
 
 - `POSTGRES_HOST`
 - `POSTGRES_USER`
@@ -252,6 +252,9 @@ The output will point to the exact line causing the syntax error.
 
 ## License
 
-[MIT](./LICENSE) � NPM Load Balancer Contributors
+[MIT](./LICENSE) - NPM Load Balancer Contributors
+
+
+
 
 
