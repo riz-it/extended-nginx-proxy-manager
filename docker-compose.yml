@@ -24,18 +24,18 @@ services:
       - DB_TYPE=${DB_TYPE:-sqlite}
       
       # Required for PostgreSQL or MySQL
-      - DB_HOST=${DB_HOST:-${POSTGRES_HOST}}
-      - DB_PORT=${DB_PORT:-${POSTGRES_PORT:-5432}}
-      - DB_USER=${DB_USER:-${POSTGRES_USER}}
-      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
-      - DB_NAME=${DB_NAME:-${POSTGRES_DB}}
+      - DB_HOST=${DB_HOST:-${DB_HOST}}
+      - DB_PORT=${DB_PORT:-${DB_PORT:-5432}}
+      - DB_USER=${DB_USER:-${DB_USER}}
+      - DB_PASSWORD=${DB_PASSWORD:-${DB_PASSWORD}}
+      - DB_NAME=${DB_NAME:-${DB_NAME}}
       
       # Legacy Nginx Proxy Manager environment variables
-      - DB_POSTGRES_HOST=${DB_HOST:-${POSTGRES_HOST}}
-      - DB_POSTGRES_PORT=${DB_PORT:-${POSTGRES_PORT:-5432}}
-      - DB_POSTGRES_USER=${DB_USER:-${POSTGRES_USER}}
-      - DB_POSTGRES_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD}}
-      - DB_POSTGRES_NAME=${DB_NAME:-${POSTGRES_DB}}
+      - DB_POSTGRES_HOST=${DB_HOST:-${DB_HOST}}
+      - DB_POSTGRES_PORT=${DB_PORT:-${DB_PORT:-5432}}
+      - DB_POSTGRES_USER=${DB_USER:-${DB_USER}}
+      - DB_POSTGRES_PASSWORD=${DB_PASSWORD:-${DB_PASSWORD}}
+      - DB_POSTGRES_NAME=${DB_NAME:-${DB_NAME}}
 
       # App Specific Config
       - PORT=3001
