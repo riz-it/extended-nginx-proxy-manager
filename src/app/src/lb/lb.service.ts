@@ -18,6 +18,7 @@ interface LbRow {
   algorithm: string;
   enable_failover: boolean;
   enable_load_balancing: boolean;
+  custom_nginx_config: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +46,7 @@ export interface LbResponse {
   algorithm: string;
   enableFailover: boolean;
   enableLoadBalancing: boolean;
+  customNginxConfig: string | null;
   createdAt: string;
   updatedAt: string;
   upstreams: UpstreamResponse[];
@@ -85,6 +87,7 @@ export class LbService {
       algorithm: row.algorithm,
       enableFailover: !!row.enable_failover,
       enableLoadBalancing: !!row.enable_load_balancing,
+      customNginxConfig: row.custom_nginx_config || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       upstreams: upstreams.map((u) => this.transformUpstream(u)),
@@ -171,6 +174,7 @@ export class LbService {
         algorithm: dto.algorithm || 'roundrobin',
         enable_failover: dto.enableFailover ?? true,
         enable_load_balancing: dto.enableLoadBalancing ?? true,
+        custom_nginx_config: dto.customNginxConfig || null,
         created_at: now,
         updated_at: now,
       })
@@ -247,6 +251,9 @@ export class LbService {
     }
     if (dto.enableLoadBalancing !== undefined) {
       updateData['enable_load_balancing'] = dto.enableLoadBalancing;
+    }
+    if (dto.customNginxConfig !== undefined) {
+      updateData['custom_nginx_config'] = dto.customNginxConfig || null;
     }
 
     await this.db.knex('load_balancers').where({ id }).update(updateData);
@@ -325,6 +332,7 @@ export class LbService {
       algorithm: lb.algorithm,
       enableFailover: lb.enableFailover,
       enableLoadBalancing: lb.enableLoadBalancing,
+      customNginxConfig: lb.customNginxConfig || '',
       upstreams: activeUpstreams,
     });
   }
@@ -371,6 +379,7 @@ export class LbService {
       algorithm: lb.algorithm,
       enableFailover: lb.enableFailover,
       enableLoadBalancing: lb.enableLoadBalancing,
+      customNginxConfig: lb.customNginxConfig || '',
       upstreams: activeUpstreams,
     });
   }

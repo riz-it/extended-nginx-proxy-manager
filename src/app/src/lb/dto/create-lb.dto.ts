@@ -15,5 +15,6 @@ export class CreateLbDto {
   algorithm?: string;
   enableFailover?: boolean;
   enableLoadBalancing?: boolean;
+  customNginxConfig?: string;
   upstreams!: CreateUpstreamDto[];
 }

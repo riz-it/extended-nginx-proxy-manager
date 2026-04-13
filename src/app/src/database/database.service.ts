@@ -115,6 +115,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         table.string('algorithm').notNullable().defaultTo('roundrobin');
         table.boolean('enable_failover').notNullable().defaultTo(true);
         table.boolean('enable_load_balancing').notNullable().defaultTo(true);
+        table.text('custom_nginx_config').nullable().defaultTo(null);
         table.timestamp('created_at').defaultTo(this._knex.fn.now());
         table.timestamp('updated_at').defaultTo(this._knex.fn.now());
       });
@@ -129,6 +130,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       );
       await this.addColumnIfNotExists('load_balancers', 'enable_load_balancing', (table) =>
         table.boolean('enable_load_balancing').notNullable().defaultTo(true),
+      );
+      await this.addColumnIfNotExists('load_balancers', 'custom_nginx_config', (table) =>
+        table.text('custom_nginx_config').nullable().defaultTo(null),
       );
     }
 

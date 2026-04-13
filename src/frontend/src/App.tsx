@@ -215,6 +215,7 @@ function LbModal({
   const [name, setName] = useState('');
   const [listenPort, setListenPort] = useState(80);
   const [enableLoadBalancing, setEnableLoadBalancing] = useState(true);
+  const [customNginxConfig, setCustomNginxConfig] = useState('');
   const [algorithm, setAlgorithm] = useState('roundrobin');
   const [enableFailover, setEnableFailover] = useState(true);
   const [upstreams, setUpstreams] = useState<UpstreamFormData[]>([
@@ -241,6 +242,7 @@ function LbModal({
       setName(editLb.name);
       setListenPort(editLb.listenPort);
       setAlgorithm(editLb.algorithm || 'roundrobin');
+      setCustomNginxConfig(editLb.customNginxConfig || '');
       setEnableFailover(editLb.enableFailover !== undefined ? editLb.enableFailover : true);
       setEnableLoadBalancing(editLb.enableLoadBalancing !== undefined ? editLb.enableLoadBalancing : true);
       setUpstreams(
@@ -259,6 +261,7 @@ function LbModal({
       setListenPort(80);
       setAlgorithm('roundrobin');
       setEnableFailover(true);
+      setCustomNginxConfig('');
       setEnableLoadBalancing(true);
       setUpstreams([defaultUpstream()]);
     }
@@ -288,6 +291,7 @@ function LbModal({
         name: name.trim(),
         listenPort,
         algorithm,
+        customNginxConfig,
         enableFailover,
         enableLoadBalancing,
         upstreams: validUpstreams,
@@ -404,6 +408,17 @@ function LbModal({
                     <span className="toggle-subtitle">Retry the next healthy upstream automatically.</span>
                   </span>
                 </label>
+              </div>
+              <div className="form-group">
+                <label>Custom Nginx Config</label>
+                <textarea
+                  className="form-input"
+                  style={{ minHeight: '100px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
+                  placeholder="# Add proxy_read_timeout, proxy_buffers, or location blocks here"
+                  value={customNginxConfig}
+                  onChange={(e) => setCustomNginxConfig(e.target.value)}
+                />
+                <p className="form-hint">Advanced configuration injected after the default settings inside the server block. Overrides defaults.</p>
               </div>
             </div>
           )}
@@ -804,7 +819,8 @@ function App({ onLogout }: { onLogout?: () => void }) {
         name: `${lb.name}-copy-${shortHash}`,
         listenPort: lb.listenPort,
         status: 'inactive',
-        algorithm: lb.algorithm || 'roundrobin',
+        algorithm: lb.algorithm,
+        customNginxConfig: lb.customNginxConfig,
         enableFailover: lb.enableFailover !== undefined ? lb.enableFailover : true,
         enableLoadBalancing: lb.enableLoadBalancing !== undefined ? lb.enableLoadBalancing : true,
         upstreams: lb.upstreams.map((u) => ({

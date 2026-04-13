@@ -136,6 +136,7 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
     algorithm: string;
     enableFailover: boolean;
     enableLoadBalancing: boolean;
+    customNginxConfig: string;
     upstreams: Array<{
       host: string;
       weight: number;
@@ -220,6 +221,7 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
     algorithm: string;
     enableFailover: boolean;
     enableLoadBalancing: boolean;
+    customNginxConfig: string;
     upstreams: Array<{
       host: string;
       weight: number;

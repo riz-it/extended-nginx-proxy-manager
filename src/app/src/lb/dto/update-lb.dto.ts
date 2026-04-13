@@ -16,5 +16,6 @@ export class UpdateLbDto {
   algorithm?: string;
   enableFailover?: boolean;
   enableLoadBalancing?: boolean;
+  customNginxConfig?: string;
   upstreams?: UpdateUpstreamDto[];
 }
