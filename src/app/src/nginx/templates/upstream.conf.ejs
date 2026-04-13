@@ -51,6 +51,9 @@ server {
         proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
         proxy_next_upstream_tries 3;
         proxy_next_upstream_timeout 5s;
+        <% } else { %>
+        # ── Failover Disabled ───────────────────────────────────
+        proxy_next_upstream off;
         <% } %>
 
         # ── HTTP/1.1 Keepalive & Websockets ─────────────────────
