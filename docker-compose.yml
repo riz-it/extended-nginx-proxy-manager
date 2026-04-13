@@ -20,28 +20,39 @@ services:
       # ========================================================
       # DATABASE CONFIGURATION (Supports sqlite, mysql, postgresql)
       # ========================================================
-      # Active DB engine (sqlite, mysql, postgresql)
+      # Active DB engine for Custom LB (sqlite, mysql, postgresql)
       - DB_TYPE=${DB_TYPE:-sqlite}
       
       # Required for PostgreSQL or MySQL
-      - DB_HOST=${DB_HOST:-${DB_HOST}}
-      - DB_PORT=${DB_PORT:-${DB_PORT:-5432}}
-      - DB_USER=${DB_USER:-${DB_USER}}
-      - DB_PASSWORD=${DB_PASSWORD:-${DB_PASSWORD}}
-      - DB_NAME=${DB_NAME:-${DB_NAME}}
+      - DB_HOST=${DB_HOST:-}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - DB_NAME=${DB_NAME:-npm}
       
-      # Legacy Nginx Proxy Manager environment variables
-      - DB_POSTGRES_HOST=${DB_HOST:-${DB_HOST}}
-      - DB_POSTGRES_PORT=${DB_PORT:-${DB_PORT:-5432}}
-      - DB_POSTGRES_USER=${DB_USER:-${DB_USER}}
-      - DB_POSTGRES_PASSWORD=${DB_PASSWORD:-${DB_PASSWORD}}
-      - DB_POSTGRES_NAME=${DB_NAME:-${DB_NAME}}
+      # ========================================================
+      # NPM Native Database Variables (auto-mapped from above)
+      # Set these if NPM uses a different DB config than custom LB
+      # ========================================================
+      # PostgreSQL
+      - DB_POSTGRES_HOST=${DB_HOST:-}
+      - DB_POSTGRES_PORT=${DB_PORT:-5432}
+      - DB_POSTGRES_USER=${DB_USER:-}
+      - DB_POSTGRES_PASSWORD=${DB_PASSWORD:-}
+      - DB_POSTGRES_NAME=${DB_NAME:-npm}
+      
+      # MySQL / MariaDB (uncomment if using MySQL)
+      # - DB_MYSQL_HOST=${DB_HOST:-}
+      # - DB_MYSQL_PORT=${DB_PORT:-3306}
+      # - DB_MYSQL_USER=${DB_USER:-}
+      # - DB_MYSQL_PASSWORD=${DB_PASSWORD:-}
+      # - DB_MYSQL_NAME=${DB_NAME:-npm}
 
       # App Specific Config
       - PORT=3001
       - NODE_ENV=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

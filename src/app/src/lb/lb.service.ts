@@ -4,87 +4,199 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import { NginxService } from '../nginx/nginx.service';
 import { CreateLbDto } from './dto/create-lb.dto';
 import { UpdateLbDto } from './dto/update-lb.dto';
+
+// ── Type interfaces for raw DB rows ──
+interface LbRow {
+  id: number;
+  name: string;
+  listen_port: number;
+  status: string;
+  algorithm: string;
+  enable_failover: boolean;
+  enable_load_balancing: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface UpstreamRow {
+  id: number;
+  host: string;
+  weight: number;
+  max_fails: number;
+  fail_timeout: string;
+  is_backup: boolean;
+  protocol: string;
+  is_active: boolean;
+  load_balancer_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Camelcase response types ──
+export interface LbResponse {
+  id: number;
+  name: string;
+  listenPort: number;
+  status: string;
+  algorithm: string;
+  enableFailover: boolean;
+  enableLoadBalancing: boolean;
+  createdAt: string;
+  updatedAt: string;
+  upstreams: UpstreamResponse[];
+}
+
+export interface UpstreamResponse {
+  id: number;
+  host: string;
+  weight: number;
+  maxFails: number;
+  failTimeout: string;
+  isBackup: boolean;
+  protocol: string;
+  isActive: boolean;
+  loadBalancerId: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 @Injectable()
 export class LbService {
   private readonly logger = new Logger(LbService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly db: DatabaseService,
     private readonly nginx: NginxService,
   ) {}
 
   /**
-   * List all load balancers with upstream counts
+   * Transform snake_case DB row to camelCase response
    */
-  async findAll() {
-    return this.prisma.loadBalancer.findMany({
-      include: {
-        upstreams: {
-          orderBy: { id: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+  private transformLb(row: LbRow, upstreams: UpstreamRow[]): LbResponse {
+    return {
+      id: row.id,
+      name: row.name,
+      listenPort: row.listen_port,
+      status: row.status,
+      algorithm: row.algorithm,
+      enableFailover: !!row.enable_failover,
+      enableLoadBalancing: !!row.enable_load_balancing,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      upstreams: upstreams.map((u) => this.transformUpstream(u)),
+    };
+  }
+
+  private transformUpstream(row: UpstreamRow): UpstreamResponse {
+    return {
+      id: row.id,
+      host: row.host,
+      weight: row.weight,
+      maxFails: row.max_fails,
+      failTimeout: row.fail_timeout,
+      isBackup: !!row.is_backup,
+      protocol: row.protocol,
+      isActive: !!row.is_active,
+      loadBalancerId: row.load_balancer_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  /**
+   * List all load balancers with upstreams
+   */
+  async findAll(): Promise<LbResponse[]> {
+    const lbs = await this.db.knex<LbRow>('load_balancers')
+      .select('*')
+      .orderBy('created_at', 'desc');
+
+    const lbIds = lbs.map((lb) => lb.id);
+
+    let upstreams: UpstreamRow[] = [];
+    if (lbIds.length > 0) {
+      upstreams = await this.db.knex<UpstreamRow>('upstreams')
+        .whereIn('load_balancer_id', lbIds)
+        .orderBy('id', 'asc');
+    }
+
+    return lbs.map((lb) => {
+      const lbUpstreams = upstreams.filter((u) => u.load_balancer_id === lb.id);
+      return this.transformLb(lb, lbUpstreams);
     });
   }
 
   /**
    * Get single load balancer by ID
    */
-  async findOne(id: number) {
-    const lb = await this.prisma.loadBalancer.findUnique({
-      where: { id },
-      include: {
-        upstreams: {
-          orderBy: { id: 'asc' },
-        },
-      },
-    });
+  async findOne(id: number): Promise<LbResponse> {
+    const lb = await this.db.knex<LbRow>('load_balancers')
+      .where({ id })
+      .first();
 
     if (!lb) {
       throw new NotFoundException(`LoadBalancer #${id} not found`);
     }
 
-    return lb;
+    const upstreams = await this.db.knex<UpstreamRow>('upstreams')
+      .where({ load_balancer_id: id })
+      .orderBy('id', 'asc');
+
+    return this.transformLb(lb, upstreams);
   }
 
   /**
    * Create a new load balancer and generate nginx config
    */
-  async create(dto: CreateLbDto) {
+  async create(dto: CreateLbDto): Promise<LbResponse> {
     if (!dto.name || !dto.upstreams || dto.upstreams.length === 0) {
       throw new BadRequestException('name and at least 1 upstream required');
     }
 
     // Sanitize name (only alphanumeric + hyphens)
     const safeName = dto.name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const now = new Date().toISOString();
 
-    const lb = await this.prisma.loadBalancer.create({
-      data: {
+    // Insert load balancer
+    const [lbId] = await this.db
+      .knex('load_balancers')
+      .insert({
         name: safeName,
-        listenPort: dto.listenPort || 80,
+        listen_port: dto.listenPort || 80,
         status: dto.status || 'active',
         algorithm: dto.algorithm || 'roundrobin',
-        enableFailover: dto.enableFailover ?? true,
-        enableLoadBalancing: dto.enableLoadBalancing ?? true,
-        upstreams: {
-          create: dto.upstreams.map((u) => ({
-            host: u.host,
-            weight: u.weight ?? 1,
-            maxFails: u.maxFails ?? 3,
-            failTimeout: u.failTimeout ?? '10s',
-            isBackup: u.isBackup ?? false,
-            isActive: u.isActive ?? true,
-            protocol: u.protocol ?? 'http',
-          })),
-        },
-      },
-      include: { upstreams: true },
-    });
+        enable_failover: dto.enableFailover ?? true,
+        enable_load_balancing: dto.enableLoadBalancing ?? true,
+        created_at: now,
+        updated_at: now,
+      })
+      .returning('id');
+
+    // Handle different DB return formats
+    const insertedId = typeof lbId === 'object' ? (lbId as { id: number }).id : lbId;
+
+    // Insert upstreams
+    const upstreamRows = dto.upstreams.map((u) => ({
+      host: u.host,
+      weight: u.weight ?? 1,
+      max_fails: u.maxFails ?? 3,
+      fail_timeout: u.failTimeout ?? '10s',
+      is_backup: u.isBackup ?? false,
+      is_active: u.isActive ?? true,
+      protocol: u.protocol ?? 'http',
+      load_balancer_id: insertedId,
+      created_at: now,
+      updated_at: now,
+    }));
+
+    await this.db.knex('upstreams').insert(upstreamRows);
+
+    // Fetch the complete record
+    const lb = await this.findOne(insertedId);
 
     // Generate and apply nginx config ONLY if active
     if (lb.status === 'active') {
@@ -92,9 +204,15 @@ export class LbService {
         await this.applyConfig(lb);
       } catch (error) {
         // Rollback if nginx config fails
-        this.logger.error('Failed to apply nginx config, rolling back...', error);
-        await this.prisma.loadBalancer.delete({ where: { id: lb.id } });
-        throw new BadRequestException(`Nginx config validation failed: ${error}`);
+        this.logger.error(
+          'Failed to apply nginx config, rolling back...',
+          error,
+        );
+        await this.db.knex('upstreams').where({ load_balancer_id: insertedId }).delete();
+        await this.db.knex('load_balancers').where({ id: insertedId }).delete();
+        throw new BadRequestException(
+          `Nginx config validation failed: ${error}`,
+        );
       }
     }
 
@@ -104,18 +222,19 @@ export class LbService {
   /**
    * Update a load balancer (replace upstreams)
    */
-  async update(id: number, dto: UpdateLbDto) {
+  async update(id: number, dto: UpdateLbDto): Promise<LbResponse> {
     const existing = await this.findOne(id);
+    const now = new Date().toISOString();
 
-    // Update basic fields
-    const updateData: Record<string, unknown> = {};
+    // Build update data (snake_case for DB)
+    const updateData: Record<string, unknown> = { updated_at: now };
     if (dto.name !== undefined) {
       updateData['name'] = dto.name
         .replace(/[^a-zA-Z0-9_-]/g, '_')
         .toLowerCase();
     }
     if (dto.listenPort !== undefined) {
-      updateData['listenPort'] = dto.listenPort;
+      updateData['listen_port'] = dto.listenPort;
     }
     if (dto.status !== undefined) {
       updateData['status'] = dto.status;
@@ -124,32 +243,34 @@ export class LbService {
       updateData['algorithm'] = dto.algorithm;
     }
     if (dto.enableFailover !== undefined) {
-      updateData['enableFailover'] = dto.enableFailover;
+      updateData['enable_failover'] = dto.enableFailover;
     }
     if (dto.enableLoadBalancing !== undefined) {
-      updateData['enableLoadBalancing'] = dto.enableLoadBalancing;
+      updateData['enable_load_balancing'] = dto.enableLoadBalancing;
     }
+
+    await this.db.knex('load_balancers').where({ id }).update(updateData);
 
     // If upstreams provided, replace all
     if (dto.upstreams && dto.upstreams.length > 0) {
       // Delete old upstreams
-      await this.prisma.upstream.deleteMany({
-        where: { loadBalancerId: id },
-      });
+      await this.db.knex('upstreams').where({ load_balancer_id: id }).delete();
 
       // Create new ones
-      await this.prisma.upstream.createMany({
-        data: dto.upstreams.map((u) => ({
-          host: u.host!,
-          weight: u.weight ?? 1,
-          maxFails: u.maxFails ?? 3,
-          failTimeout: u.failTimeout ?? '10s',
-          isBackup: u.isBackup ?? false,
-          isActive: u.isActive ?? true,
-          protocol: u.protocol ?? 'http',
-          loadBalancerId: id,
-        })),
-      });
+      const upstreamRows = dto.upstreams.map((u) => ({
+        host: u.host!,
+        weight: u.weight ?? 1,
+        max_fails: u.maxFails ?? 3,
+        fail_timeout: u.failTimeout ?? '10s',
+        is_backup: u.isBackup ?? false,
+        is_active: u.isActive ?? true,
+        protocol: u.protocol ?? 'http',
+        load_balancer_id: id,
+        created_at: now,
+        updated_at: now,
+      }));
+
+      await this.db.knex('upstreams').insert(upstreamRows);
     }
 
     // If name changed, remove old config
@@ -161,11 +282,7 @@ export class LbService {
       }
     }
 
-    const updated = await this.prisma.loadBalancer.update({
-      where: { id },
-      data: updateData,
-      include: { upstreams: true },
-    });
+    const updated = await this.findOne(id);
 
     // Re-apply nginx config
     if (updated.status === 'active') {
@@ -188,7 +305,9 @@ export class LbService {
       // ignore errors
     }
 
-    await this.prisma.loadBalancer.delete({ where: { id } });
+    // Cascade: delete upstreams first, then LB
+    await this.db.knex('upstreams').where({ load_balancer_id: id }).delete();
+    await this.db.knex('load_balancers').where({ id }).delete();
 
     return { message: `LoadBalancer "${lb.name}" deleted` };
   }
@@ -198,9 +317,7 @@ export class LbService {
    */
   async preview(id: number) {
     const lb = await this.findOne(id);
-    const activeUpstreams = lb.upstreams.filter(
-      (u: { isActive: boolean }) => u.isActive,
-    );
+    const activeUpstreams = lb.upstreams.filter((u) => u.isActive);
 
     return this.nginx.getConfigPreview({
       name: lb.name,
@@ -231,33 +348,17 @@ export class LbService {
       await this.applyConfig(lb);
     }
 
-    return this.prisma.loadBalancer.update({
-      where: { id },
-      data: { status: newStatus },
-      include: { upstreams: true },
-    });
+    await this.db.knex('load_balancers')
+      .where({ id })
+      .update({ status: newStatus, updated_at: new Date().toISOString() });
+
+    return this.findOne(id);
   }
 
   /**
    * Apply nginx config for a load balancer
    */
-  private async applyConfig(lb: {
-    name: string;
-    listenPort: number;
-    algorithm: string;
-    enableFailover: boolean;
-    enableLoadBalancing: boolean;
-    upstreams: Array<{
-      host: string;
-      weight: number;
-      maxFails: number;
-      failTimeout: string;
-      isBackup: boolean;
-      isActive: boolean;
-      id: number;
-      protocol: string;
-    }>;
-  }) {
+  private async applyConfig(lb: LbResponse) {
     const activeUpstreams = lb.upstreams.filter((u) => u.isActive);
     if (activeUpstreams.length === 0) {
       this.logger.warn(`No active upstreams for ${lb.name}`);
