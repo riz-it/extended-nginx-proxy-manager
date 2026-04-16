@@ -28,6 +28,10 @@ upstream <%= name %> {
 server {
     listen <%= listenPort || 80 %>;
 
+    # ── Traffic Aggregation (UDP Syslog to NestJS) ──
+    set $lb_id "<%= id %>";
+    access_log syslog:server=127.0.0.1:44444,tag=lb_traffic traffic_json_fmt;
+
     # ── Default Proxy Settings (inheritable by all locations) ─────
     proxy_connect_timeout 3s;
     proxy_read_timeout 10s;

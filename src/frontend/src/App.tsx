@@ -16,11 +16,13 @@ import {
   Layers,
   LogOut,
   Copy,
-  Database
+  Database,
+  Search
 } from 'lucide-react';
 import './index.css';
 import { api } from './api';
 import type { LoadBalancer, Upstream, CreateLbPayload } from './types';
+import { TrafficChart } from './TrafficChart';
 
 // ── Toast System ────────────────────────────────────────────
 
@@ -215,7 +217,6 @@ function LbModal({
   const [name, setName] = useState('');
   const [listenPort, setListenPort] = useState(80);
   const [enableLoadBalancing, setEnableLoadBalancing] = useState(true);
-  const [customNginxConfig, setCustomNginxConfig] = useState('');
   const [algorithm, setAlgorithm] = useState('roundrobin');
   const [enableFailover, setEnableFailover] = useState(true);
   const [upstreams, setUpstreams] = useState<UpstreamFormData[]>([
@@ -242,7 +243,6 @@ function LbModal({
       setName(editLb.name);
       setListenPort(editLb.listenPort);
       setAlgorithm(editLb.algorithm || 'roundrobin');
-      setCustomNginxConfig(editLb.customNginxConfig || '');
       setEnableFailover(editLb.enableFailover !== undefined ? editLb.enableFailover : true);
       setEnableLoadBalancing(editLb.enableLoadBalancing !== undefined ? editLb.enableLoadBalancing : true);
       setUpstreams(
@@ -261,7 +261,6 @@ function LbModal({
       setListenPort(80);
       setAlgorithm('roundrobin');
       setEnableFailover(true);
-      setCustomNginxConfig('');
       setEnableLoadBalancing(true);
       setUpstreams([defaultUpstream()]);
     }
@@ -291,7 +290,6 @@ function LbModal({
         name: name.trim(),
         listenPort,
         algorithm,
-        customNginxConfig,
         enableFailover,
         enableLoadBalancing,
         upstreams: validUpstreams,
@@ -408,17 +406,6 @@ function LbModal({
                     <span className="toggle-subtitle">Retry the next healthy upstream automatically.</span>
                   </span>
                 </label>
-              </div>
-              <div className="form-group">
-                <label>Custom Nginx Config</label>
-                <textarea
-                  className="form-input"
-                  style={{ minHeight: '100px', fontFamily: 'var(--font-mono)', fontSize: '12px' }}
-                  placeholder="# Add proxy_read_timeout, proxy_buffers, or location blocks here"
-                  value={customNginxConfig}
-                  onChange={(e) => setCustomNginxConfig(e.target.value)}
-                />
-                <p className="form-hint">Advanced configuration injected after the default settings inside the server block. Overrides defaults.</p>
               </div>
             </div>
           )}
@@ -569,6 +556,39 @@ function PreviewModal({
   );
 }
 
+// ── Analytics Modal ─────────────────────────────────────────
+
+function AnalyticsModal({
+  lb,
+  onClose,
+}: {
+  lb: LoadBalancer | null;
+  onClose: () => void;
+}) {
+  if (!lb) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 900 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+             <div className="header-logo" style={{ width: 32, height: 32, background: 'var(--primary)' }}>
+              <Activity size={18} />
+            </div>
+            <h2>Traffic Analytics: {lb.name}</h2>
+          </div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="modal-body">
+          <TrafficChart lbId={lb.id} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── LB Card Component ───────────────────────────────────────
 
 function LbCard({
@@ -578,6 +598,7 @@ function LbCard({
   onToggle,
   onPreview,
   onDuplicate,
+  onAnalytics,
 }: {
   lb: LoadBalancer;
   onEdit: (lb: LoadBalancer) => void;
@@ -585,6 +606,7 @@ function LbCard({
   onToggle: (lb: LoadBalancer) => void;
   onPreview: (lb: LoadBalancer) => void;
   onDuplicate: (lb: LoadBalancer) => void;
+  onAnalytics: (lb: LoadBalancer) => void;
 }) {
   const activeUpstreams = lb.upstreams.filter((u) => u.isActive);
   const totalWeight = activeUpstreams
@@ -599,6 +621,14 @@ function LbCard({
           <h3>{lb.name}</h3>
         </div>
         <div className="lb-card-actions">
+          <button
+            className="btn btn-ghost btn-icon btn-sm"
+            onClick={() => onAnalytics(lb)}
+            title="Traffic Analytics"
+            style={{ color: 'var(--primary)' }}
+          >
+            <Activity size={16} />
+          </button>
           <button
             className="btn btn-ghost btn-icon btn-sm"
             onClick={() => onDuplicate(lb)}
@@ -705,12 +735,14 @@ function App({ onLogout }: { onLogout?: () => void }) {
   const [loadBalancers, setLoadBalancers] = useState<LoadBalancer[]>([]);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [editLb, setEditLb] = useState<LoadBalancer | null>(null);
   const [deleteLb, setDeleteLb] = useState<LoadBalancer | null>(null);
   const [previewLb, setPreviewLb] = useState<LoadBalancer | null>(null);
+  const [analyticsLb, setAnalyticsLb] = useState<LoadBalancer | null>(null);
   const [previewConfig, setPreviewConfig] = useState('');
 
   const addToast = useCallback((message: string, type: 'success' | 'error') => {
@@ -819,8 +851,7 @@ function App({ onLogout }: { onLogout?: () => void }) {
         name: `${lb.name}-copy-${shortHash}`,
         listenPort: lb.listenPort,
         status: 'inactive',
-        algorithm: lb.algorithm,
-        customNginxConfig: lb.customNginxConfig,
+        algorithm: lb.algorithm || 'roundrobin',
         enableFailover: lb.enableFailover !== undefined ? lb.enableFailover : true,
         enableLoadBalancing: lb.enableLoadBalancing !== undefined ? lb.enableLoadBalancing : true,
         upstreams: lb.upstreams.map((u) => ({
@@ -840,6 +871,11 @@ function App({ onLogout }: { onLogout?: () => void }) {
       addToast(`Duplication failed: ${err}`, 'error');
     }
   };
+
+  const filteredLoadBalancers = loadBalancers.filter((lb) =>
+    lb.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    lb.upstreams.some(u => u.host.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   // ── Render ──────────────────────────────────────────────
 
@@ -936,12 +972,33 @@ function App({ onLogout }: { onLogout?: () => void }) {
           </div>
         </div>
 
+        {/* Global Traffic Chart */}
+        <TrafficChart />
+
         {/* Load Balancer Grid */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '16px' }}>
+          <h2 style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
             <Layers size={18} color="var(--primary)" />
             Service Clusters
           </h2>
+
+          <div className="search-input-container">
+            <Search size={16} color="var(--text-muted)" style={{ marginRight: '8px' }} />
+            <input
+              type="text"
+              placeholder="Search by service name or host..."
+              className="search-input-field"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <X 
+                size={14} 
+                style={{ cursor: 'pointer', color: 'var(--text-muted)' }} 
+                onClick={() => setSearchQuery('')} 
+              />
+            )}
+          </div>
         </div>
 
         {loading && loadBalancers.length === 0 ? (
@@ -962,8 +1019,17 @@ function App({ onLogout }: { onLogout?: () => void }) {
                   <Plus size={16} /> Create First Balancer
                 </button>
               </div>
+            ) : filteredLoadBalancers.length === 0 ? (
+              <div className="empty-state" style={{ padding: '3rem 0', gridColumn: '1 / -1' }}>
+                <div className="empty-state-icon" style={{ fontSize: '48px', opacity: 0.5 }}>🔍</div>
+                <h3>No Results Found</h3>
+                <p>No service cluster matches "{searchQuery}".</p>
+                <button className="btn btn-ghost" onClick={() => setSearchQuery('')}>
+                  Clear Search
+                </button>
+              </div>
             ) : (
-              loadBalancers.map((lb) => (
+              filteredLoadBalancers.map((lb) => (
                 <LbCard
                   key={lb.id}
                   lb={lb}
@@ -972,6 +1038,7 @@ function App({ onLogout }: { onLogout?: () => void }) {
                   onToggle={handleToggle}
                   onPreview={handlePreview}
                   onDuplicate={handleDuplicate}
+                  onAnalytics={setAnalyticsLb}
                 />
               ))
             )}
@@ -995,6 +1062,10 @@ function App({ onLogout }: { onLogout?: () => void }) {
         lb={previewLb}
         config={previewConfig}
         onClose={() => setPreviewLb(null)}
+      />
+      <AnalyticsModal
+        lb={analyticsLb}
+        onClose={() => setAnalyticsLb(null)}
       />
 
       <style>{`

@@ -66,14 +66,42 @@ export interface UpstreamResponse {
   updatedAt: string;
 }
 
+import { OnModuleInit } from '@nestjs/common';
+
 @Injectable()
-export class LbService {
+export class LbService implements OnModuleInit {
   private readonly logger = new Logger(LbService.name);
 
   constructor(
     private readonly db: DatabaseService,
     private readonly nginx: NginxService,
   ) {}
+
+  async onModuleInit() {
+    this.logger.log('Waiting 5 seconds for Nginx to initialize before syncing configs...');
+    setTimeout(() => {
+      this.syncAllConfigs();
+    }, 5000);
+  }
+
+  async syncAllConfigs() {
+    try {
+      this.logger.log('Synchronizing Nginx Configurations from Database...');
+      const lbs = await this.findAll();
+      let syncedCount = 0;
+      
+      for (const lb of lbs) {
+        if (lb.status === 'active') {
+          // Re-generate config silently
+          await this.applyConfig(lb);
+          syncedCount++;
+        }
+      }
+      this.logger.log(`Successfully synchronized ${syncedCount} active Load Balancer configs.`);
+    } catch (err) {
+      this.logger.error('Failed to sync Nginx configs on startup', err);
+    }
+  }
 
   /**
    * Transform snake_case DB row to camelCase response
@@ -114,7 +142,8 @@ export class LbService {
    * List all load balancers with upstreams
    */
   async findAll(): Promise<LbResponse[]> {
-    const lbs = await this.db.knex<LbRow>('load_balancers')
+    const lbs = await this.db
+      .knex<LbRow>('load_balancers')
       .select('*')
       .orderBy('created_at', 'desc');
 
@@ -122,7 +151,8 @@ export class LbService {
 
     let upstreams: UpstreamRow[] = [];
     if (lbIds.length > 0) {
-      upstreams = await this.db.knex<UpstreamRow>('upstreams')
+      upstreams = await this.db
+        .knex<UpstreamRow>('upstreams')
         .whereIn('load_balancer_id', lbIds)
         .orderBy('id', 'asc');
     }
@@ -137,7 +167,8 @@ export class LbService {
    * Get single load balancer by ID
    */
   async findOne(id: number): Promise<LbResponse> {
-    const lb = await this.db.knex<LbRow>('load_balancers')
+    const lb = await this.db
+      .knex<LbRow>('load_balancers')
       .where({ id })
       .first();
 
@@ -145,7 +176,8 @@ export class LbService {
       throw new NotFoundException(`LoadBalancer #${id} not found`);
     }
 
-    const upstreams = await this.db.knex<UpstreamRow>('upstreams')
+    const upstreams = await this.db
+      .knex<UpstreamRow>('upstreams')
       .where({ load_balancer_id: id })
       .orderBy('id', 'asc');
 
@@ -181,7 +213,8 @@ export class LbService {
       .returning('id');
 
     // Handle different DB return formats
-    const insertedId = typeof lbId === 'object' ? (lbId as { id: number }).id : lbId;
+    const insertedId =
+      typeof lbId === 'object' ? (lbId as { id: number }).id : lbId;
 
     // Insert upstreams
     const upstreamRows = dto.upstreams.map((u) => ({
@@ -212,7 +245,10 @@ export class LbService {
           'Failed to apply nginx config, rolling back...',
           error,
         );
-        await this.db.knex('upstreams').where({ load_balancer_id: insertedId }).delete();
+        await this.db
+          .knex('upstreams')
+          .where({ load_balancer_id: insertedId })
+          .delete();
         await this.db.knex('load_balancers').where({ id: insertedId }).delete();
         throw new BadRequestException(
           `Nginx config validation failed: ${error}`,
@@ -327,6 +363,7 @@ export class LbService {
     const activeUpstreams = lb.upstreams.filter((u) => u.isActive);
 
     return this.nginx.getConfigPreview({
+      id: lb.id,
       name: lb.name,
       listenPort: lb.listenPort,
       algorithm: lb.algorithm,
@@ -356,7 +393,8 @@ export class LbService {
       await this.applyConfig(lb);
     }
 
-    await this.db.knex('load_balancers')
+    await this.db
+      .knex('load_balancers')
       .where({ id })
       .update({ status: newStatus, updated_at: new Date().toISOString() });
 
@@ -374,6 +412,7 @@ export class LbService {
     }
 
     await this.nginx.generateAndApply({
+      id: lb.id,
       name: lb.name,
       listenPort: lb.listenPort,
       algorithm: lb.algorithm,

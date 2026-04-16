@@ -113,6 +113,7 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
       '# Custom Load Balancer configs — auto-generated, do not edit',
       `# Last updated: ${new Date().toISOString()}`,
       `# Total LBs: ${files.length}`,
+      "log_format traffic_json_fmt escape=json '{\"lb_id\":\"$lb_id\",\"upstream\":\"$upstream_addr\",\"status\":\"$status\",\"bytes\":\"$body_bytes_sent\"}';",
       '',
     ];
 
@@ -131,6 +132,7 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
    * Generate nginx config from template and apply it
    */
   async generateAndApply(config: {
+    id: number;
     name: string;
     listenPort: number;
     algorithm: string;
@@ -216,6 +218,7 @@ export class NginxService implements OnModuleInit, OnModuleDestroy {
    * Get generated config content for preview
    */
   getConfigPreview(config: {
+    id: number;
     name: string;
     listenPort: number;
     algorithm: string;

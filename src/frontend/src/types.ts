@@ -21,7 +21,6 @@ export interface LoadBalancer {
   algorithm: string;
   enableFailover: boolean;
   enableLoadBalancing: boolean;
-  customNginxConfig?: string;
   upstreams: Upstream[];
   createdAt: string;
   updatedAt: string;
@@ -34,7 +33,6 @@ export interface CreateLbPayload {
   algorithm: string;
   enableFailover: boolean;
   enableLoadBalancing: boolean;
-  customNginxConfig?: string;
   upstreams: Omit<Upstream, 'id' | 'createdAt' | 'updatedAt'>[];
 }
 
@@ -45,6 +43,5 @@ export interface UpdateLbPayload {
   algorithm?: string;
   enableFailover?: boolean;
   enableLoadBalancing?: boolean;
-  customNginxConfig?: string;
   upstreams?: Omit<Upstream, 'createdAt' | 'updatedAt'>[];
 }

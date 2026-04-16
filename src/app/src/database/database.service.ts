@@ -120,19 +120,29 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         table.timestamp('updated_at').defaultTo(this._knex.fn.now());
       });
     } else {
-      this.logger.log('Table load_balancers already exists, checking for new columns...');
+      this.logger.log(
+        'Table load_balancers already exists, checking for new columns...',
+      );
       // Add any new columns that might have been added in schema updates
       await this.addColumnIfNotExists('load_balancers', 'algorithm', (table) =>
         table.string('algorithm').notNullable().defaultTo('roundrobin'),
       );
-      await this.addColumnIfNotExists('load_balancers', 'enable_failover', (table) =>
-        table.boolean('enable_failover').notNullable().defaultTo(true),
+      await this.addColumnIfNotExists(
+        'load_balancers',
+        'enable_failover',
+        (table) =>
+          table.boolean('enable_failover').notNullable().defaultTo(true),
       );
-      await this.addColumnIfNotExists('load_balancers', 'enable_load_balancing', (table) =>
-        table.boolean('enable_load_balancing').notNullable().defaultTo(true),
+      await this.addColumnIfNotExists(
+        'load_balancers',
+        'enable_load_balancing',
+        (table) =>
+          table.boolean('enable_load_balancing').notNullable().defaultTo(true),
       );
-      await this.addColumnIfNotExists('load_balancers', 'custom_nginx_config', (table) =>
-        table.text('custom_nginx_config').nullable().defaultTo(null),
+      await this.addColumnIfNotExists(
+        'load_balancers',
+        'custom_nginx_config',
+        (table) => table.text('custom_nginx_config').nullable().defaultTo(null),
       );
     }
 
@@ -160,10 +170,27 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         table.timestamp('updated_at').defaultTo(this._knex.fn.now());
       });
     } else {
-      this.logger.log('Table upstreams already exists, checking for new columns...');
+      this.logger.log(
+        'Table upstreams already exists, checking for new columns...',
+      );
       await this.addColumnIfNotExists('upstreams', 'protocol', (table) =>
         table.string('protocol').notNullable().defaultTo('http'),
       );
+    }
+
+    // ── traffic_stats table ──
+    const hasTrafficTable = await this._knex.schema.hasTable('traffic_stats');
+    if (!hasTrafficTable) {
+      this.logger.log('Creating table: traffic_stats');
+      await this._knex.schema.createTable('traffic_stats', (table) => {
+        table.increments('id').primary();
+        table.timestamp('timestamp').notNullable().index(); // The minute/hour bucket
+        table.integer('load_balancer_id').unsigned().notNullable(); // No foreign key constraint needed in case LB is deleted
+        table.string('upstream_host').nullable(); // Optional, if traffic is tied to a specific upstream
+        table.integer('request_count').notNullable().defaultTo(0);
+        table.bigInteger('bytes_sent').notNullable().defaultTo(0);
+        table.timestamp('created_at').defaultTo(this._knex.fn.now());
+      });
     }
 
     this.logger.log('Database migration completed successfully.');

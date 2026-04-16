@@ -60,4 +60,12 @@ export const api = {
 
   // Health
   health: () => request<{ status: string }>('/health'),
+
+  // Traffic
+  getTraffic: (days?: number, lbId?: number) => {
+    const params = new URLSearchParams();
+    if (days) params.append('days', String(days));
+    if (lbId) params.append('lbId', String(lbId));
+    return request<any>(`/traffic?${params.toString()}`);
+  }
 };
